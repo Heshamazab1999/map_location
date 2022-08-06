@@ -1,4 +1,4 @@
-package com.example.get_location
+package com.example.map_location
 
 import io.flutter.embedding.android.FlutterActivity
 

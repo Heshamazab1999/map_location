@@ -44,7 +44,7 @@ class MapSampleState extends State<MapSample> {
   getLocation() async {
     final data = await FirebaseFirestore.instance
         .collection('locations')
-        .doc("test")
+        .doc("loc")
         .get()
         .then((value) {
       model = Model.fromJson(value.data());
