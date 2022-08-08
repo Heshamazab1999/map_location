@@ -17,7 +17,7 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: MapSample(),
     );
@@ -25,6 +25,8 @@ class MyApp extends StatelessWidget {
 }
 
 class MapSample extends StatefulWidget {
+  const MapSample({Key? key}) : super(key: key);
+
   @override
   State<MapSample> createState() => MapSampleState();
 }
@@ -38,7 +40,19 @@ class MapSampleState extends State<MapSample> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    getLocation();
+    get();
+  }
+
+  get() async {
+    final data = await await FirebaseFirestore.instance
+        .collection('locations')
+        .doc("loc")
+        .get()
+        .then((value) =>
+    model = Model.fromJson(value.data()));
+    if (kDebugMode) {
+       print(model.latitude);
+    }
   }
 
   getLocation() async {
@@ -49,37 +63,38 @@ class MapSampleState extends State<MapSample> {
         .then((value) {
       model = Model.fromJson(value.data());
       if (kDebugMode) {
-        print(model.latitude);
+         print(model.latitude);
       }
-      marker.add(
-        Marker(
-          markerId: MarkerId("1"),
-          infoWindow: InfoWindow(title: "Your Location"),
-          position: LatLng(model.latitude!, model.longitude!),
-        ),
-      );
-      setState(() {});
+      setState(() {
+        marker.add(
+          Marker(
+            markerId: const MarkerId("1"),
+            infoWindow: const InfoWindow(title: "Your Location"),
+            position: LatLng(model.latitude!, model.longitude!),
+          ),
+        );
+      });
+      print(marker);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: (model.latitude == null && model.longitude == null)
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
-          : GoogleMap(
-              markers: marker,
-              mapType: MapType.normal,
-              initialCameraPosition: CameraPosition(
-                target: LatLng(model.latitude!, model.longitude!),
-                zoom: 14.4746,
-              ),
-              onMapCreated: (GoogleMapController controller) {
-                _controller.complete(controller);
-              },
-            ),
-    );
+        body: FutureBuilder(
+                future: getLocation(),
+                builder: (context, snapshot) {
+                  return GoogleMap(
+                    markers: marker,
+                    mapType: MapType.normal,
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(model.latitude!, model.longitude!),
+                      zoom: 14.4746,
+                    ),
+                    onMapCreated: (GoogleMapController controller) {
+                      _controller.complete(controller);
+                    },
+                  );
+                }));
   }
 }
