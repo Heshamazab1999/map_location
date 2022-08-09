@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:collection';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:map_location/Model.dart';
@@ -32,69 +29,58 @@ class MapSample extends StatefulWidget {
 }
 
 class MapSampleState extends State<MapSample> {
-  var marker = HashSet<Marker>();
   Model model = Model();
+  List<Marker> markers = [];
+
   final Completer<GoogleMapController> _controller = Completer();
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    get();
-  }
-
-  get() async {
-    final data = await await FirebaseFirestore.instance
+    FirebaseFirestore.instance
         .collection('locations')
-        .doc("loc")
-        .get()
-        .then((value) =>
-    model = Model.fromJson(value.data()));
-    if (kDebugMode) {
-       print(model.latitude);
-    }
-  }
+        .snapshots()
+        .listen((event) {
+      print(event.docs);
 
-  getLocation() async {
-    final data = await FirebaseFirestore.instance
-        .collection('locations')
-        .doc("loc")
-        .get()
-        .then((value) {
-      model = Model.fromJson(value.data());
-      if (kDebugMode) {
-         print(model.latitude);
-      }
-      setState(() {
-        marker.add(
-          Marker(
-            markerId: const MarkerId("1"),
-            infoWindow: const InfoWindow(title: "Your Location"),
+      event.docs.forEach((element) {
+        model = Model.fromJson(element.data());
+        setState(() {
+          markers.add(Marker(
+            markerId: MarkerId(element.id),
             position: LatLng(model.latitude!, model.longitude!),
-          ),
-        );
+            draggable: true,
+            infoWindow: InfoWindow(
+              title: element.id,
+              snippet: '${model.latitude}, ${model.longitude}',
+            ),
+          ));
+        });
       });
-      print(marker);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: FutureBuilder(
-                future: getLocation(),
-                builder: (context, snapshot) {
-                  return GoogleMap(
-                    markers: marker,
-                    mapType: MapType.normal,
-                    initialCameraPosition: CameraPosition(
-                      target: LatLng(model.latitude!, model.longitude!),
-                      zoom: 14.4746,
-                    ),
-                    onMapCreated: (GoogleMapController controller) {
-                      _controller.complete(controller);
-                    },
-                  );
-                }));
+        body: model.longitude != null && model.latitude != null
+            ? GoogleMap(
+                mapType: MapType.normal,
+                compassEnabled: true,
+                trafficEnabled: true,
+                zoomControlsEnabled: false,
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(model.latitude!, model.longitude!),
+                  zoom: 18,
+                ),
+                markers: Set<Marker>.of(markers),
+                onMapCreated: (GoogleMapController controller) {
+                  _controller.complete(controller);
+                },
+              )
+            : Center(child: CircularProgressIndicator()));
   }
 }
