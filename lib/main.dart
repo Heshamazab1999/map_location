@@ -41,33 +41,19 @@ class MapSampleState extends State<MapSample> {
     // TODO: implement initState
     super.initState();
     addMarker();
-    FirebaseFirestore.instance
-        .collection('locations')
-        .snapshots()
-        .listen((event) {
-      print(event.docs);
-      event.docs.forEach((element) {
-        model = Model.fromJson(element.data());
-        setState(() {
-          markers.add(Marker(
-            markerId: MarkerId(element.id),
-            position: LatLng(model.latitude!, model.longitude!),
-            draggable: true,
-            infoWindow: InfoWindow(
-              title: element.id,
-              snippet: '${model.latitude}, ${model.longitude}',
-            ),
-          ));
-        });
-      });
-    });
+    assetBytes();
   }
 
-  addMarker() async {
+  Future<Uint8List> assetBytes() async {
     String imgurl = "https://www.fluttercampus.com/img/car.png";
     Uint8List bytes = (await NetworkAssetBundle(Uri.parse(imgurl)).load(imgurl))
         .buffer
         .asUint8List();
+    return bytes;
+  }
+
+  addMarker() async {
+    Uint8List bytes = await assetBytes();
     setState(() {
       markers.add(Marker(
         markerId: MarkerId("2"),
@@ -87,23 +73,44 @@ class MapSampleState extends State<MapSample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: model.latitude == null && model.longitude == null
-            ? const Center(child: CircularProgressIndicator())
-            : GoogleMap(
-                mapType: MapType.hybrid,
-                compassEnabled: true,
-                trafficEnabled: true,
-                zoomControlsEnabled: false,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: true,
-                initialCameraPosition: CameraPosition(
-                  target: LatLng(model.latitude!, model.longitude!),
-                  zoom: 10,
-                ),
-                markers: Set<Marker>.of(markers),
-                onMapCreated: (GoogleMapController controller) {
-                  _controller.complete(controller);
-                })
-     );
+        body: StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance.collection('locations').snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(
+                  child: CircularProgressIndicator(),
+                );
+              } else {
+                snapshot.data!.docs.map((doc) {
+                  final data = doc.data()! as Map<String, dynamic>;
+                  for (int item = 0;
+                      item <= snapshot.data!.docs.length;
+                      ++item) {
+                    markers.add(
+                      Marker(
+                        markerId: MarkerId(item.toString()),
+                        position: LatLng(data['latitude'] as double,
+                            data['longitude'] as double),
+                        draggable: true,
+                        icon: BitmapDescriptor.defaultMarkerWithHue(21),
+                      ),
+                    );
+                  }
+                }).toList();
+                Model model = Model.fromJson(snapshot.data!.docs.first.data());
+                return GoogleMap(
+                  mapType: MapType.normal,
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(model.latitude!, model.longitude!),
+                    zoom: 10,
+                  ),
+                  onMapCreated: (GoogleMapController controller) {
+                    _controller.complete(controller);
+                  },
+                  markers: Set.from(markers),
+                );
+              }
+            }));
   }
 }
