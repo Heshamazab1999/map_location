@@ -2,6 +2,7 @@ class Model {
   double? latitude;
   double? longitude;
 
+
   Model({
     this.latitude,
     this.longitude,

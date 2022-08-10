@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:map_location/Model.dart';
 
@@ -38,12 +40,12 @@ class MapSampleState extends State<MapSample> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    addMarker();
     FirebaseFirestore.instance
         .collection('locations')
         .snapshots()
         .listen((event) {
       print(event.docs);
-
       event.docs.forEach((element) {
         model = Model.fromJson(element.data());
         setState(() {
@@ -61,12 +63,34 @@ class MapSampleState extends State<MapSample> {
     });
   }
 
+  addMarker() async {
+    String imgurl = "https://www.fluttercampus.com/img/car.png";
+    Uint8List bytes = (await NetworkAssetBundle(Uri.parse(imgurl)).load(imgurl))
+        .buffer
+        .asUint8List();
+    setState(() {
+      markers.add(Marker(
+        markerId: MarkerId("2"),
+        position: LatLng(35.83333, 36.66667),
+        draggable: true,
+        icon: BitmapDescriptor.fromBytes(bytes),
+      ));
+      markers.add(Marker(
+        markerId: MarkerId("3"),
+        position: LatLng(35.83663, 36.134867),
+        draggable: true,
+        icon: BitmapDescriptor.fromBytes(bytes),
+      ));
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: model.longitude != null && model.latitude != null
-            ? GoogleMap(
-                mapType: MapType.normal,
+        body: model.latitude == null && model.longitude == null
+            ? const Center(child: CircularProgressIndicator())
+            : GoogleMap(
+                mapType: MapType.hybrid,
                 compassEnabled: true,
                 trafficEnabled: true,
                 zoomControlsEnabled: false,
@@ -74,13 +98,12 @@ class MapSampleState extends State<MapSample> {
                 myLocationButtonEnabled: true,
                 initialCameraPosition: CameraPosition(
                   target: LatLng(model.latitude!, model.longitude!),
-                  zoom: 18,
+                  zoom: 10,
                 ),
                 markers: Set<Marker>.of(markers),
                 onMapCreated: (GoogleMapController controller) {
                   _controller.complete(controller);
-                },
-              )
-            : Center(child: CircularProgressIndicator()));
+                })
+     );
   }
 }
